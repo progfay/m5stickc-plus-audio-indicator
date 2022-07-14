@@ -24,18 +24,18 @@ SOFTWARE.
  */
 
 /* ESP8266/32 Audio Spectrum Analyser on an SSD1306/SH1106 Display
- * The MIT License (MIT) Copyright (c) 2017 by David Bird. 
+ * The MIT License (MIT) Copyright (c) 2017 by David Bird.
  * The formulation and display of an AUdio Spectrum using an ESp8266 or ESP32 and SSD1306 or SH1106 OLED Display using a Fast Fourier Transform
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files 
- * (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, 
- * publish, distribute, but not to use it commercially for profit making or to sub-license and/or to sell copies of the Software or to 
- * permit persons to whom the Software is furnished to do so, subject to the following conditions:  
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE 
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
- * See more at http://dsbird.org.uk 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files
+ * (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, but not to use it commercially for profit making or to sub-license and/or to sell copies of the Software or to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * See more at http://dsbird.org.uk
 */
 
 // M5StickC Audio Spectrum             : 2019.06.01 : macsbug
@@ -45,8 +45,8 @@ SOFTWARE.
 // https://github.com/tobozo/ESP32-8-Octave-Audio-Spectrum-Display/tree/wrover-kit
 // https://github.com/G6EJD/ESP32-8266-Audio-Spectrum-Display
 // https://github.com/kosme/arduinoFFT
- 
- 
+
+
 // David Bird (https://github.com/G6EJD/ESP32-8266-Audio-Spectrum-Display)
 // tobozo (https://github.com/tobozo/ESP32-Audio-Spectrum-Waveform-Display)
 // macsbug (https://macsbug.wordpress.com/)
@@ -54,7 +54,7 @@ SOFTWARE.
 
 
 #pragma GCC optimize ("O3")
-#include <M5StickC.h>
+#include <M5StickCPlus.h>
 #include <driver/i2s.h>
 #include <math.h>
 #include <string.h>
@@ -66,10 +66,10 @@ SOFTWARE.
 #define PIN_DATA 34
 #define SAMPLES 1024 // Must be a power of 2
 #define READ_LEN (2 * SAMPLES)
-#define TFT_WIDTH 160
-#define TFT_HEIGHT 80
+#define SPECTRUM_WIDTH 240
+#define SPECTRUM_HEIGHT 100
 #define BANDS 8
-#define BANDS_WIDTH ( TFT_WIDTH / BANDS )
+#define BANDS_WIDTH ( SPECTRUM_WIDTH / BANDS )
 #define BANDS_PADDING 8
 #define BAR_WIDTH ( BANDS_WIDTH - BANDS_PADDING )
 #define NOISE_FLOOR 1
@@ -115,10 +115,10 @@ static eqBand audiospectrum[BANDS] = {
   { " 8k", 0 },
   { "16k", 0 }
 };
- 
+
 static int vTemp[2][MAXBUFSIZE];
 static uint8_t curbuf = 0;
-static uint16_t colormap[TFT_HEIGHT];//color palette for the band meter(pre-fill in setup)
+static uint16_t colormap[SPECTRUM_HEIGHT];//color palette for the band meter(pre-fill in setup)
 
 static dywapitchtracker pitchTracker;
 static TFT_eSprite sprite(&M5.Lcd);
@@ -149,27 +149,27 @@ void i2sInit(){
    pin_config.bck_io_num   = I2S_PIN_NO_CHANGE;
    pin_config.ws_io_num    = PIN_CLK;
    pin_config.data_out_num = I2S_PIN_NO_CHANGE;
-   pin_config.data_in_num  = PIN_DATA; 
+   pin_config.data_in_num  = PIN_DATA;
    i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
    i2s_set_pin(I2S_NUM_0, &pin_config);
    i2s_set_clk(I2S_NUM_0, DYWAPT_SAMPLERATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
 }
- 
+
 void setup() {
   M5.begin();
   setCpuFrequencyMhz(80);
   M5.Lcd.setRotation(1);
   M5.Lcd.fillScreen(BLACK);
 
-  sprite.createSprite(TFT_WIDTH, TFT_HEIGHT);
+  sprite.createSprite(SPECTRUM_WIDTH, SPECTRUM_HEIGHT);
   sprite.setTextSize(1);
 
   i2sInit();
- 
-  for(uint8_t i=0;i<TFT_HEIGHT;i++) {
-    //colormap[i] = M5.Lcd.color565(TFT_HEIGHT-i*.5,i*1.1,0); //RGB
-    //colormap[i] = M5.Lcd.color565(TFT_HEIGHT-i*4.4,i*2.5,0);//RGB:rev macsbug
-    float r = TFT_HEIGHT - i;
+
+  for(uint8_t i=0;i<SPECTRUM_HEIGHT;i++) {
+    //colormap[i] = M5.Lcd.color565(SPECTRUM_HEIGHT-i*.5,i*1.1,0); //RGB
+    //colormap[i] = M5.Lcd.color565(SPECTRUM_HEIGHT-i*4.4,i*2.5,0);//RGB:rev macsbug
+    float r = SPECTRUM_HEIGHT - i;
     float g = i;
     float mag = (r > g)? 255./r : 255./g;
     r *= mag;
@@ -183,7 +183,7 @@ void setup() {
 
 void initMode() {
   M5.Lcd.fillRect(0, 0,
-                  TFT_WIDTH, TFT_HEIGHT, BLACK);
+                  SPECTRUM_WIDTH, SPECTRUM_HEIGHT, BLACK);
   switch (runmode) {
     case ModeSpectrumBars:
       M5.Lcd.setTextSize(1);
@@ -214,8 +214,8 @@ void showSpectrumBars(){
   Fixed15FFT::calc_fft(vTemp_, vTemp_ + SAMPLES);
 
   int values[BANDS] = {};
-  for (int i = 2; i < (SAMPLES/2); i++){ 
-    // Don't use sample 0 and only first SAMPLES/2 are usable. 
+  for (int i = 2; i < (SAMPLES/2); i++){
+    // Don't use sample 0 and only first SAMPLES/2 are usable.
     // Each array element represents a frequency and its value the amplitude.
     int ampsq = vTemp_[i] * vTemp_[i] + vTemp_[i + SAMPLES] * vTemp_[i + SAMPLES];
     if (ampsq > NOISE_FLOOR) {
@@ -245,28 +245,28 @@ void showSpectrumBars(){
     if(audiospectrum[band].lastpeak != audiospectrum[band].peak) {
       // delete last peak
       uint16_t hpos = BANDS_WIDTH*band + (BANDS_PADDING/2);
-      M5.Lcd.drawFastHLine(hpos,TFT_HEIGHT-audiospectrum[band].lastpeak,BAR_WIDTH,BLACK);
+      M5.Lcd.drawFastHLine(hpos,SPECTRUM_HEIGHT-audiospectrum[band].lastpeak,BAR_WIDTH,BLACK);
       audiospectrum[band].lastpeak = audiospectrum[band].peak;
-      uint16_t ypos = TFT_HEIGHT - audiospectrum[band].peak;
+      uint16_t ypos = SPECTRUM_HEIGHT - audiospectrum[band].peak;
       M5.Lcd.drawFastHLine(hpos, ypos,
                            BAR_WIDTH, colormap[ypos]);
     }
-  } 
+  }
 }
 
 void displayBand(int band, int dsize){
   uint16_t hpos = BANDS_WIDTH*band + (BANDS_PADDING/2);
   if (dsize < 0) dsize = 0;
-  if(dsize>TFT_HEIGHT-10) {
-    dsize = TFT_HEIGHT-10; // leave some hspace for text
+  if(dsize>SPECTRUM_HEIGHT-10) {
+    dsize = SPECTRUM_HEIGHT-10; // leave some hspace for text
   }
   if(dsize < audiospectrum[band].lastval) {
     // lower value, delete some lines
-    M5.Lcd.fillRect(hpos, TFT_HEIGHT-audiospectrum[band].lastval,
+    M5.Lcd.fillRect(hpos, SPECTRUM_HEIGHT-audiospectrum[band].lastval,
                     BAR_WIDTH, audiospectrum[band].lastval - dsize,BLACK);
   }
   for (int s = 0; s <= dsize; s=s+4){
-    uint16_t ypos = TFT_HEIGHT - s;
+    uint16_t ypos = SPECTRUM_HEIGHT - s;
     M5.Lcd.drawFastHLine(hpos, ypos, BAR_WIDTH, colormap[ypos]);
   }
   if (dsize > audiospectrum[band].peak){audiospectrum[band].peak = dsize;}
@@ -304,12 +304,12 @@ void showFreq(float freq) {
     float fnote = log2(freq)*12 - 36.376316562f;
     int note = fnote + 0.5f;
     if (note >= 0) {
-      sprite.setCursor(TFT_WIDTH/2 - 4, 0);
+      sprite.setCursor(SPECTRUM_WIDTH/2 - 4, 0);
       sprite.print(notestr[note % 12]);
       sprite.print(note / 12 - 1);
       float cent = (fnote - note) * 100;
       sprintf(strbuf, "%.1fcents", cent);
-      sprite.drawRightString(strbuf, TFT_WIDTH, 0, 1);
+      sprite.drawRightString(strbuf, SPECTRUM_WIDTH, 0, 1);
     }
   }
 }
@@ -328,7 +328,7 @@ void showOscilloscope()
   skipcount = 0;
 #endif
   uint16_t s = calcNumSamples(freq);
-  float mx = (float)TFT_WIDTH / s;
+  float mx = (float)SPECTRUM_WIDTH / s;
   float my;
   uint16_t maxV = 0;
   uint16_t minV = 65535;
@@ -341,16 +341,16 @@ void showOscilloscope()
     }
   }
   if (maxV - minV > OSC_NOISEFLOOR) {
-    my = (float)(TFT_HEIGHT-10) / (maxV - minV);
+    my = (float)(SPECTRUM_HEIGHT-10) / (maxV - minV);
   }
   else {
-    my = (float)(TFT_HEIGHT-10) / OSC_NOISEFLOOR;
+    my = (float)(SPECTRUM_HEIGHT-10) / OSC_NOISEFLOOR;
     minV = (((int)maxV + (int)minV) >> 1) - OSC_NOISEFLOOR/2;
   }
   sprite.fillSprite(BLACK);
-  uint16_t y = TFT_HEIGHT - (oscbuf_[offset] - minV) * my;
+  uint16_t y = SPECTRUM_HEIGHT - (oscbuf_[offset] - minV) * my;
   for (i = 1; i < s; ++i) {
-    uint16_t y2 = TFT_HEIGHT - (oscbuf_[offset + i] - minV) * my;
+    uint16_t y2 = SPECTRUM_HEIGHT - (oscbuf_[offset + i] - minV) * my;
     sprite.drawLine((uint16_t)((i-1) * mx), y,
                     (uint16_t)(i * mx), y2, LIGHTGREY);
     y = y2;
@@ -383,19 +383,19 @@ void showTuner() {
       fgcolor = BLACK;
     }
     sprite.fillSprite(bgcolor);
-    sprite.fillRect(0, 0, TFT_WIDTH, TFT_HEIGHT, bgcolor);
+    sprite.fillRect(0, 0, SPECTRUM_WIDTH, SPECTRUM_HEIGHT, bgcolor);
     sprite.setTextColor(fgcolor);
-    sprite.drawRect(2, 36, TFT_WIDTH-3, TFT_HEIGHT-40, fgcolor);
-    sprite.drawRect(TFT_WIDTH/2 + 1, 36, 1, TFT_HEIGHT - 40, fgcolor);
-    sprite.fillCircle(((float)TFT_WIDTH/2 + 1) + cent * ((float)(TFT_WIDTH-3)/100), (TFT_HEIGHT+34)/2, 5, fgcolor);
+    sprite.drawRect(2, 36, SPECTRUM_WIDTH-3, SPECTRUM_HEIGHT-40, fgcolor);
+    sprite.drawRect(SPECTRUM_WIDTH/2 + 1, 36, 1, SPECTRUM_HEIGHT - 40, fgcolor);
+    sprite.fillCircle(((float)SPECTRUM_WIDTH/2 + 1) + cent * ((float)(SPECTRUM_WIDTH-3)/100), (SPECTRUM_HEIGHT+34)/2, 5, fgcolor);
     char strbuf[8];
     sprintf(strbuf, "%s%d", notestr[note % 12], note / 12 - 1);
-    sprite.drawCentreString(strbuf, TFT_WIDTH/2, 3, 4);
+    sprite.drawCentreString(strbuf, SPECTRUM_WIDTH/2, 3, 4);
   }
   else {
     sprite.fillSprite(DARKGREY);
-    sprite.drawRect(2, 36, TFT_WIDTH-3, TFT_HEIGHT-40, BLACK);
-    sprite.drawLine(TFT_WIDTH/2 + 1, 36, TFT_WIDTH/2 + 1, TFT_HEIGHT - 4, BLACK);
+    sprite.drawRect(2, 36, SPECTRUM_WIDTH-3, SPECTRUM_HEIGHT-40, BLACK);
+    sprite.drawLine(SPECTRUM_WIDTH/2 + 1, 36, SPECTRUM_WIDTH/2 + 1, SPECTRUM_HEIGHT - 4, BLACK);
   }
   sprite.pushSprite(0,0);
 }
@@ -451,7 +451,7 @@ void loop() {
   switch(runmode) {
     case ModeSpectrumBars:
       for (int i = 0; i < SAMPLES; ++i) {
-        
+
         vTemp[curbuf][i] = (int)adcBuffer[i] - dc;
         vTemp[curbuf][i + SAMPLES] = 0;
       }
