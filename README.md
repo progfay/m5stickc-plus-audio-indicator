@@ -1,13 +1,6 @@
-# m5stickc-audiospectrum
-Audio Spectrum Display, Oscilloscope, and Tuner for M5StickC
+# M5StickC Plus Audio Indicator
 
-Tap Button A to switch a mode.
-
-Audio Spectrum Display ==> Oscilloscope ==> Tuner
-
-For Arduino IDE.
-
-![Images](https://raw.githubusercontent.com/KKQ-KKQ/m5stickc-audiospectrum/master/images/example.gif)
+Audio Spectrum Display and Sound Pressure Level for M5StickC Plus
 
 ## Required Libraries:
-- M5StickC
+- M5StickC Plus
