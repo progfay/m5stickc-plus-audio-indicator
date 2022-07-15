@@ -207,6 +207,32 @@ void initMode() {
   }
 }
 
+float totalPower = 0;
+int numPower = 0;
+void showPressureLevel(){
+  if (numPower > 0) {
+    float db = 100 * log10(totalPower / numPower);
+
+    M5.Lcd.setTextColor(WHITE);
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextDatum(CC_DATUM);
+    String str(db);
+    M5.Lcd.drawString("dB", 15, 113, 2);
+    M5.Lcd.fillRect(28, SPECTRUM_HEIGHT + 13, SPECTRUM_WIDTH - 28, 10, BLACK);
+    M5.Lcd.fillRect(30, SPECTRUM_HEIGHT + 15, db, 6, calcDecibelColor(db));
+
+    totalPower = 0;
+    numPower = 0;
+  }
+}
+
+uint16_t calcDecibelColor(float db) {
+  if (db < 55) return WHITE;
+  if (db < 70) return CYAN;
+  if (db < 80) return YELLOW;
+  return RED;
+}
+
 void showSpectrumBars(){
   int *vTemp_ = vTemp[curbuf^1];
 
@@ -420,6 +446,7 @@ void looptask(void *) {
           showTuner();
           break;
       }
+      showPressureLevel();
       semaphore = false;
     }
     else {
@@ -447,6 +474,13 @@ void loop() {
     dc += adcBuffer[i];
   }
   dc /= SAMPLES;
+
+  float power = 0;
+  for (int i = 0; i < SAMPLES; ++i) {
+    power += sq(adcBuffer[i] / dc);
+  }
+  totalPower += sqrt(power / SAMPLES);
+  numPower++;
 
   switch(runmode) {
     case ModeSpectrumBars:
